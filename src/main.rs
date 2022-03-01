@@ -36,6 +36,24 @@ impl Value{
             _ => panic!("Invalid Value"),
         }
     }
+
+    fn get_worth(&self) -> i32{
+        match self{
+            Value::Ace => 11,
+            Value::Two => 2,
+            Value::Three => 3,
+            Value::Four => 4,
+            Value::Five => 5,
+            Value::Six => 6,
+            Value::Seven => 7,
+            Value::Eight => 8,
+            Value::Nine => 9,
+            Value::Ten => 10,
+            Value::Jack => 10,
+            Value::Queen => 10,
+            Value::King => 10,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -105,6 +123,26 @@ impl Player{
     fn give_new_hand(&mut self, deck: &mut Deck){
         self.hand.push(pop_at_random(deck));
     }
+
+    fn display_hand(&self){
+        print!("Your hand: ");
+        let mut sum_value = 0;
+
+        // TODO: fix check so if counter is on last element it doesn't print 'and'
+        let mut counter:usize = 0;
+        for card in &self.hand{
+            print!("{:?} of {:?}s", card.value, card.color);
+            
+            if &self.hand.len() > &0 && &counter != &self.hand.len() {
+                print!(" and ");
+            }
+
+            sum_value += card.value.get_worth();
+            counter += 1;
+        }
+
+        println!("\nYOUR VALUE: {:?}", sum_value);
+    }
 }
 
 struct Dealer{
@@ -115,8 +153,30 @@ impl Dealer{
     fn give_new_hand(&mut self, deck: &mut Deck){
         self.hand.push(pop_at_random(deck));
     }
+
+    fn display_hand(&self){
+        print!("Dealer's hand: ");
+        let mut sum_value = 0;
+
+        let mut counter:usize = 0;
+        for card in &self.hand{
+            print!("{:?} of {:?}s", card.value, card.color);
+            
+            if &self.hand.len() > &0 && &counter != &self.hand.len() {
+                print!(" and ");
+            }
+
+            sum_value += card.value.get_worth();
+            counter += 1;
+        }
+
+        println!("\nDEALERS VALUE: {:?}", sum_value);
+    }
 }
 
+// HELPERS //
+
+// removes random card from deck and returns it
 fn pop_at_random(deck: &mut Deck) -> Card{
 
     let random_index = rand::thread_rng().gen_range(0..=deck.cards.len());
@@ -126,6 +186,7 @@ fn pop_at_random(deck: &mut Deck) -> Card{
     card
 }
 
+// builds a deck of 52 cards and shuffles it
 fn build_deck() -> Deck{
     let mut deck = Deck::new();
     for i in 1..=4{
@@ -141,6 +202,7 @@ fn build_deck() -> Deck{
 }
 
 
+// MAIN //
 fn main() {
     let mut deck = build_deck();
     let mut player:Player = Player{hand: Vec::new()};
@@ -160,8 +222,8 @@ fn game_loop(deck: &mut Deck, player: &mut Player, dealer: &mut Dealer){
     player.give_new_hand(deck);
     dealer.give_new_hand(deck);
 
-    println!("{:?}", player.hand);
-    println!("{:?}", dealer.hand);
+    dealer.display_hand();
+    player.display_hand();
 
     println!("{:?}", deck.cards.len());
 
