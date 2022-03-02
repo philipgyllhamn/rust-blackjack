@@ -1,4 +1,5 @@
 use rand::prelude::*;
+use std::io::stdin;
 
 #[derive(Debug)]
 enum Value{
@@ -116,15 +117,17 @@ impl Deck{
 }
 
 struct Player{
-    hand: Vec<Card>
+    hand: Vec<Card>,
+    value: i32
 }
 
 impl Player{
+
     fn give_new_hand(&mut self, deck: &mut Deck){
         self.hand.push(pop_at_random(deck));
     }
 
-    fn display_hand(&self){
+    fn display_hand(&mut self){
         print!("Your hand: ");
         let mut sum_value = 0;
 
@@ -133,7 +136,7 @@ impl Player{
         for card in &self.hand{
             print!("{:?} of {:?}s", card.value, card.color);
             
-            if &self.hand.len() > &0 && &counter != &self.hand.len() {
+            if self.hand.len() > 0 && counter != self.hand.len() - 1 {
                 print!(" and ");
             }
 
@@ -141,20 +144,24 @@ impl Player{
             counter += 1;
         }
 
-        println!("\nYOUR VALUE: {:?}", sum_value);
+        self.value = sum_value;
+
+        println!("\nYOUR VALUE: {:?}", self.value);
     }
 }
 
 struct Dealer{
-    hand: Vec<Card>
+    hand: Vec<Card>,
+    value: i32
 }
 
 impl Dealer{
+
     fn give_new_hand(&mut self, deck: &mut Deck){
         self.hand.push(pop_at_random(deck));
     }
 
-    fn display_hand(&self){
+    fn display_hand(&mut self){
         print!("Dealer's hand: ");
         let mut sum_value = 0;
 
@@ -162,15 +169,17 @@ impl Dealer{
         for card in &self.hand{
             print!("{:?} of {:?}s", card.value, card.color);
             
-            if &self.hand.len() > &0 && &counter != &self.hand.len() {
+            if self.hand.len() > 0 && counter != self.hand.len() - 1 {
                 print!(" and ");
             }
 
             sum_value += card.value.get_worth();
             counter += 1;
         }
+        
+        self.value = sum_value;
 
-        println!("\nDEALERS VALUE: {:?}", sum_value);
+        println!("\nDEALERS VALUE: {:?}", self.value);
     }
 }
 
@@ -179,7 +188,7 @@ impl Dealer{
 // removes random card from deck and returns it
 fn pop_at_random(deck: &mut Deck) -> Card{
 
-    let random_index = rand::thread_rng().gen_range(0..=deck.cards.len());
+    let random_index = rand::thread_rng().gen_range(0..=deck.cards.len() - 1);
 
     let card = deck.cards.remove(random_index);
     
@@ -205,26 +214,128 @@ fn build_deck() -> Deck{
 // MAIN //
 fn main() {
     let mut deck = build_deck();
-    let mut player:Player = Player{hand: Vec::new()};
-    let mut dealer:Dealer = Dealer{hand: Vec::new()};
-
-    // println!("{:?}", deck.cards);
-    println!("{:?}", deck.cards.len());
+    let mut player:Player = Player{hand: Vec::new(), value: 0};
+    let mut dealer:Dealer = Dealer{hand: Vec::new(), value: 0};
 
     game_loop(&mut deck, &mut player, &mut dealer)
 
 }
 
 fn game_loop(deck: &mut Deck, player: &mut Player, dealer: &mut Dealer){
-    println!("{:?}", deck.cards.len());
+    player.give_new_hand(deck);
     player.give_new_hand(deck);
     dealer.give_new_hand(deck);
-    player.give_new_hand(deck);
     dealer.give_new_hand(deck);
 
     dealer.display_hand();
     player.display_hand();
 
-    println!("{:?}", deck.cards.len());
+    let bust_or_bj: bool = check_bust_bj(player, dealer);
 
+    if bust_or_bj{
+        return;
+    }
+
+    while player.value < 21 && deck.cards.len() > 0 && dealer.value < 21{
+        println!("\nHit or Stand?");
+        let mut input = String::new();
+        stdin().read_line(&mut input).expect("Failed to read line");
+        let input = input.trim();
+
+        if input == "hit"{
+            player.give_new_hand(deck);
+            player.display_hand();
+        }
+        else if input == "stand"{
+            break;
+        }
+        else{
+            println!("Invalid input");
+        }
+    }
+
+    if player.value < 22 {
+        dealer_ai(deck, dealer);
+    }
+
+    display_results(player, dealer);
+
+}
+
+fn dealer_ai(deck: &mut Deck, dealer: &mut Dealer){
+
+    println!("\nDealer's turn");
+    println!("-----------------------------------------------------");
+
+
+    while dealer.value < 21 {
+
+        let rng = rand::thread_rng().gen_range(1..=5);
+
+        if dealer.value > 19 && rng == 1{
+            dealer.give_new_hand(deck);
+        }else if dealer.value < 19 && dealer.value > 10 && (rng == 2 || rng == 3 || rng == 4){
+            dealer.give_new_hand(deck);
+        }else if dealer.value < 10 && dealer.value > 1 {
+            dealer.give_new_hand(deck);
+        }else if rng == 5{
+            break;
+        }
+        
+        dealer.display_hand();
+    }
+
+}
+
+fn check_bust_bj(player: &mut Player, dealer: &mut Dealer) -> bool{
+    if player.value > 21 {
+        println!("You busted!");
+        return true;
+    }
+    else if dealer.value > 21 {
+        println!("Dealer busted!");
+        return true;
+    }
+    else if dealer.value == 21 && player.value != 21 {
+        println!("Dealer got Blackjack!!");
+        return true;
+    }
+    else if player.value == 21 && dealer.value != 21 {
+        println!("You got Blackjack!!");
+        return true;
+    }
+
+    false
+}
+
+fn display_results(player: &mut Player, dealer: &mut Dealer){
+
+    println!("-----------------------------------------------------");
+
+    if player.value == 21 && dealer.value != 21{
+        println!("You win!");
+    }else if player.value > 21{
+        println!("You busted! Dealer wins!");
+    }
+    else if player.value != 21 && dealer.value == 21{
+        println!("Dealer wins!");
+    }
+    else if player.value > 21 && dealer.value > 21{
+        println!("You both bust!");
+    }
+    else if player.value > 21 && dealer.value < 21{
+        println!("Dealer wins!");
+    }
+    else if player.value < 21 && dealer.value > 21{
+        println!("You win!");
+    }
+    else if player.value == dealer.value {
+        println!("It's a tie!");
+    }
+    else if player.value > dealer.value {
+        println!("You win!");
+    }
+    else if player.value < dealer.value{
+        println!("Dealer wins!");
+    }
 }
