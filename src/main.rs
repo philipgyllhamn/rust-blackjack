@@ -118,10 +118,24 @@ impl Deck{
 
 struct Player{
     hand: Vec<Card>,
-    value: i32
+    value: i32,
+    money: i32,
+    bet: i32,
 }
 
 impl Player{
+
+    fn bet_money(&mut self, amount: i32){
+
+        if amount > self.money{
+            println!("You don't have enough money to bet that much!");
+
+            return;
+        }
+
+        self.money -= amount;
+        self.bet = amount;
+    }
 
     fn give_new_hand(&mut self, deck: &mut Deck){
         self.hand.push(pop_at_random(deck));
@@ -210,22 +224,48 @@ fn build_deck() -> Deck{
     deck
 }
 
-
+//////////
 // MAIN //
+//////////
 fn main() {
-    let mut deck = build_deck();
-    let mut player:Player = Player{hand: Vec::new(), value: 0};
+    let mut player:Player = Player{hand: Vec::new(), value: 0, money: 100, bet: 0};
     let mut dealer:Dealer = Dealer{hand: Vec::new(), value: 0};
+    
+    
+    while player.money > 0 {
 
-    game_loop(&mut deck, &mut player, &mut dealer)
+        player.bet = 0;
+        
+        while player.bet == 0 || player.bet > player.money{
+            bet_menu(&mut player);
+        }
 
+        blackjack_loop(&mut player, &mut dealer)
+    }
+
+    println!("You have no more money. Game over.");
 }
 
-fn game_loop(deck: &mut Deck, player: &mut Player, dealer: &mut Dealer){
-    player.give_new_hand(deck);
-    player.give_new_hand(deck);
-    dealer.give_new_hand(deck);
-    dealer.give_new_hand(deck);
+fn bet_menu(player: &mut Player){
+    println!("\nYou have ${:?}", player.money);
+    println!("How much would you like to bet?");
+    let mut input = String::new();
+    stdin().read_line(&mut input).expect("Failed to read line");
+    let bet = input.trim().parse::<i32>().expect("Please type a number");
+    player.bet_money(bet);
+}
+
+// GAME LOOP //
+fn blackjack_loop(player: &mut Player, dealer: &mut Dealer){
+    let mut deck:Deck = build_deck();
+
+    player.hand.clear();
+    dealer.hand.clear();
+
+    player.give_new_hand(&mut deck);
+    player.give_new_hand(&mut deck);
+    dealer.give_new_hand(&mut deck);
+    dealer.give_new_hand(&mut deck);
 
     dealer.display_hand();
     player.display_hand();
@@ -237,13 +277,14 @@ fn game_loop(deck: &mut Deck, player: &mut Player, dealer: &mut Dealer){
     }
 
     while player.value < 21 && deck.cards.len() > 0 && dealer.value < 21{
+        println!("Your bet: ${:?}", player.bet);
         println!("\nHit or Stand?");
         let mut input = String::new();
         stdin().read_line(&mut input).expect("Failed to read line");
         let input = input.trim();
 
         if input == "hit"{
-            player.give_new_hand(deck);
+            player.give_new_hand(&mut deck);
             player.display_hand();
         }
         else if input == "stand"{
@@ -255,14 +296,15 @@ fn game_loop(deck: &mut Deck, player: &mut Player, dealer: &mut Dealer){
     }
 
     if player.value < 22 {
-        dealer_ai(deck, dealer);
+        dealer_ai(&mut deck, dealer, player);
     }
 
     display_results(player, dealer);
 
 }
 
-fn dealer_ai(deck: &mut Deck, dealer: &mut Dealer){
+// PLAYS DEALER AI AT THE END //
+fn dealer_ai(deck: &mut Deck, dealer: &mut Dealer, player: &mut Player){
 
     println!("\nDealer's turn");
     println!("-----------------------------------------------------");
@@ -272,70 +314,92 @@ fn dealer_ai(deck: &mut Deck, dealer: &mut Dealer){
 
         let rng = rand::thread_rng().gen_range(1..=5);
 
+        if dealer.value > player.value {
+            break;
+        }
+
         if dealer.value > 19 && rng == 1{
             dealer.give_new_hand(deck);
-        }else if dealer.value < 19 && dealer.value > 10 && (rng == 2 || rng == 3 || rng == 4){
+            dealer.display_hand();
+        }else if (dealer.value < 19 && dealer.value > 10) && (rng == 2 || rng == 3 || rng == 4){
             dealer.give_new_hand(deck);
-        }else if dealer.value < 10 && dealer.value > 1 {
+            dealer.display_hand();
+        }else if dealer.value < 12 && dealer.value > 1 {
             dealer.give_new_hand(deck);
+            dealer.display_hand();
         }else if rng == 5{
             break;
         }
         
-        dealer.display_hand();
     }
 
 }
 
+// CHECKS IF PLAYER OR DEALER BUSTED //
 fn check_bust_bj(player: &mut Player, dealer: &mut Dealer) -> bool{
     if player.value > 21 {
         println!("You busted!");
+        player.bet = 0;
         return true;
     }
     else if dealer.value > 21 {
         println!("Dealer busted!");
+        player.money += player.bet * 2;
         return true;
     }
     else if dealer.value == 21 && player.value != 21 {
         println!("Dealer got Blackjack!!");
+        player.bet = 0;
         return true;
     }
     else if player.value == 21 && dealer.value != 21 {
         println!("You got Blackjack!!");
+        player.money += player.bet * 3;
         return true;
     }
 
     false
 }
 
+// DISPLAYS FINAL RESULTS //
 fn display_results(player: &mut Player, dealer: &mut Dealer){
 
     println!("-----------------------------------------------------");
 
     if player.value == 21 && dealer.value != 21{
         println!("You win!");
+        player.money += player.bet * 2;
+
     }else if player.value > 21{
         println!("You busted! Dealer wins!");
+        player.bet = 0;
     }
     else if player.value != 21 && dealer.value == 21{
         println!("Dealer wins!");
+        player.bet = 0;
     }
     else if player.value > 21 && dealer.value > 21{
         println!("You both bust!");
+        player.bet = 0;
     }
     else if player.value > 21 && dealer.value < 21{
         println!("Dealer wins!");
+        player.bet = 0;
     }
     else if player.value < 21 && dealer.value > 21{
         println!("You win!");
+        player.money += player.bet * 2;
     }
     else if player.value == dealer.value {
         println!("It's a tie!");
+        player.money += player.bet;
     }
     else if player.value > dealer.value {
         println!("You win!");
+        player.money += player.bet * 2;
     }
     else if player.value < dealer.value{
         println!("Dealer wins!");
+        player.bet = 0;
     }
 }
