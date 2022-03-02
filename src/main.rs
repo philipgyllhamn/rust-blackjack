@@ -2,6 +2,7 @@ use rand::prelude::*;
 use std::io::stdin;
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 enum Value{
     Ace,
     Two,
@@ -154,7 +155,16 @@ impl Player{
                 print!(" and ");
             }
 
-            sum_value += card.value.get_worth();
+            if card.value == Value::Ace{
+                if sum_value > 10 {
+                    sum_value += 1;
+                } else {
+                    sum_value += 11;
+                }
+            }else{
+                sum_value += card.value.get_worth();
+            }
+
             counter += 1;
         }
 
@@ -186,8 +196,19 @@ impl Dealer{
             if self.hand.len() > 0 && counter != self.hand.len() - 1 {
                 print!(" and ");
             }
+           
+            if card.value == Value::Ace{
+                if sum_value > 10 {
+                    sum_value += 1;
+                } else {
+                    sum_value += 11;
+                }
+            }else{
+                sum_value += card.value.get_worth();
+            }
 
-            sum_value += card.value.get_worth();
+
+
             counter += 1;
         }
         
@@ -235,10 +256,8 @@ fn main() {
     while player.money > 0 {
 
         player.bet = 0;
-        
-        while player.bet == 0 || player.bet > player.money{
-            bet_menu(&mut player);
-        }
+
+        bet_menu(&mut player);
 
         blackjack_loop(&mut player, &mut dealer)
     }
@@ -314,7 +333,7 @@ fn dealer_ai(deck: &mut Deck, dealer: &mut Dealer, player: &mut Player){
 
         let rng = rand::thread_rng().gen_range(1..=5);
 
-        if dealer.value > player.value {
+        if dealer.value >= player.value {
             break;
         }
 
@@ -339,7 +358,6 @@ fn dealer_ai(deck: &mut Deck, dealer: &mut Dealer, player: &mut Player){
 fn check_bust_bj(player: &mut Player, dealer: &mut Dealer) -> bool{
     if player.value > 21 {
         println!("You busted!");
-        player.bet = 0;
         return true;
     }
     else if dealer.value > 21 {
@@ -349,7 +367,6 @@ fn check_bust_bj(player: &mut Player, dealer: &mut Dealer) -> bool{
     }
     else if dealer.value == 21 && player.value != 21 {
         println!("Dealer got Blackjack!!");
-        player.bet = 0;
         return true;
     }
     else if player.value == 21 && dealer.value != 21 {
@@ -372,19 +389,15 @@ fn display_results(player: &mut Player, dealer: &mut Dealer){
 
     }else if player.value > 21{
         println!("You busted! Dealer wins!");
-        player.bet = 0;
     }
     else if player.value != 21 && dealer.value == 21{
         println!("Dealer wins!");
-        player.bet = 0;
     }
     else if player.value > 21 && dealer.value > 21{
         println!("You both bust!");
-        player.bet = 0;
     }
     else if player.value > 21 && dealer.value < 21{
         println!("Dealer wins!");
-        player.bet = 0;
     }
     else if player.value < 21 && dealer.value > 21{
         println!("You win!");
@@ -400,6 +413,5 @@ fn display_results(player: &mut Player, dealer: &mut Dealer){
     }
     else if player.value < dealer.value{
         println!("Dealer wins!");
-        player.bet = 0;
     }
 }
