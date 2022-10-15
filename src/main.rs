@@ -146,7 +146,7 @@ impl Player{
         print!("Your hand: ");
         let mut sum_value = 0;
 
-        // TODO: fix check so if counter is on last element it doesn't print 'and'
+
         let mut counter:usize = 0;
         for card in &self.hand{
             print!("{:?} of {:?}s", card.value, card.color);
@@ -156,7 +156,7 @@ impl Player{
             }
 
             if card.value == Value::Ace{
-                if sum_value > 10 {
+                if sum_value + card.value.get_worth() > 21 {
                     sum_value += 1;
                 } else {
                     sum_value += 11;
@@ -173,6 +173,7 @@ impl Player{
         println!("\nYOUR VALUE: {:?}", self.value);
     }
 }
+
 
 struct Dealer{
     hand: Vec<Card>,
@@ -196,9 +197,10 @@ impl Dealer{
             if self.hand.len() > 0 && counter != self.hand.len() - 1 {
                 print!(" and ");
             }
-           
+
+            // TODO: Fix ace value
             if card.value == Value::Ace{
-                if sum_value > 10 {
+                if sum_value + card.value.get_worth() > 21 {
                     sum_value += 1;
                 } else {
                     sum_value += 11;
@@ -207,11 +209,9 @@ impl Dealer{
                 sum_value += card.value.get_worth();
             }
 
-
-
             counter += 1;
         }
-        
+
         self.value = sum_value;
 
         println!("\nDEALERS VALUE: {:?}", self.value);
@@ -257,7 +257,10 @@ fn main() {
 
         player.bet = 0;
 
-        bet_menu(&mut player);
+        while player.bet == 0{
+            bet_menu(&mut player);
+        }
+
 
         blackjack_loop(&mut player, &mut dealer)
     }
@@ -329,12 +332,15 @@ fn dealer_ai(deck: &mut Deck, dealer: &mut Dealer, player: &mut Player){
     println!("-----------------------------------------------------");
 
 
-    while dealer.value < 21 {
+    while dealer.value <= 21 {
 
         let rng = rand::thread_rng().gen_range(1..=5);
 
         if dealer.value >= player.value {
             break;
+        }else if player.value > dealer.value{
+            dealer.give_new_hand(deck);
+            dealer.display_hand();
         }
 
         if dealer.value > 19 && rng == 1{
@@ -354,7 +360,7 @@ fn dealer_ai(deck: &mut Deck, dealer: &mut Dealer, player: &mut Player){
 
 }
 
-// CHECKS IF PLAYER OR DEALER BUSTED //
+// CHECKS IF PLAYER OR DEALER BUSTED OR GOT BLACKJAC//
 fn check_bust_bj(player: &mut Player, dealer: &mut Dealer) -> bool{
     if player.value > 21 {
         println!("You busted!");
